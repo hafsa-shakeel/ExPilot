@@ -1,0 +1,362 @@
+from flask import request, jsonify
+from flask import Blueprint, request, jsonify
+# from umd_app.models.user_model import dbconnection
+from umd_app.db import get_connection
+import bcrypt
+
+auth_bp = Blueprint('auth', __name__)
+
+
+@auth_bp.route('/test', methods=['GET'])
+def test_route():
+    return jsonify({"message": "Auth route is working!"})
+
+
+@auth_bp.route('/register-business', methods=['POST'])
+def register_business():
+    data = request.json
+    business_name = data.get('business_name')
+    industry = data.get('industry')
+    email = data.get('email')
+    contact_person = data.get('contact_person')
+    username = data.get('username')
+    user_email = data.get('user_email')
+    contact_no = data.get('contact_no')
+    raw_password = data.get('password')
+    hashed_password = bcrypt.hashpw(
+        raw_password.encode('utf-8'), bcrypt.gensalt())
+    password_to_store = hashed_password.decode('utf-8')
+
+    if not all([business_name, industry, email, contact_person, username, user_email, contact_no, raw_password]):
+        return jsonify({"error": "Missing required fields."}), 400
+
+    try:
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+    # Check if business with same name or email exists
+        cursor.execute("""
+        SELECT business_id FROM business WHERE business_name = ? OR email = ?
+        """, (business_name, email))
+        existing = cursor.fetchone()
+        if existing:
+            return jsonify({"error": "A business with this name or email already exists."}), 409
+
+    # Insert into business table
+        cursor.execute("""
+            INSERT INTO business (business_name, industry, email, contact_person)
+            OUTPUT INSERTED.business_id
+            VALUES (?, ?, ?, ?)5
+        """, (business_name, industry, email, contact_person))
+        business_id = cursor.fetchone()[0]
+
+    # Insert admin user
+        cursor.execute("""
+            INSERT INTO users (username, email, contact_no, userpassword, role_id, business_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (username, user_email, contact_no, password_to_store, 1, business_id))
+
+        conn.commit()
+        return jsonify({"message": "Business registered and admin created", "business_id": business_id}), 201
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@auth_bp.route('/users', methods=['GET'])
+def get_all_users_in_business():
+    current_user_role = request.args.get('current_user_role', type=int)
+    business_id = request.args.get('business_id', type=int)
+
+#check if it's an admin
+    if current_user_role != 1:
+        return jsonify({"error": "Only admins can view users."}), 403
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT user_id, username, email, contact_no, role_id
+            FROM users
+            WHERE business_id = ?
+        """, (business_id,))
+        users = cursor.fetchall()
+
+        user_list = [
+            {
+                "user_id": row[0],
+                "username": row[1],
+                "email": row[2],
+                "contact_no": row[3],
+                "role_id": row[4]
+            }
+            for row in users
+        ]
+
+        return jsonify({"users": user_list}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@auth_bp.route('/add-user', methods=['POST'])
+def add_user():
+    data = request.json
+
+# Simulating authenticated admin user – in production, extract from token/session
+    current_user_role = data.get('current_user_role')  # should be 1 (admin)
+
+    if current_user_role != 1:
+        return jsonify({"error": "Unauthorized. Only admins can add users."}), 403
+
+    conn = None
+    cursor = None
+
+    try:
+        username = data.get('username')
+        email = data.get('email')
+        contact_no = data.get('contact_no')
+        password = data.get('password')
+        role_id = data.get('role_id')  # should be 2 for branch manager
+        business_id = data.get('business_id')
+
+    # Check if all required fields are provided
+        if not all([username, email, contact_no, password, role_id, business_id]):
+            return jsonify({"error": "Missing required fields."}), 400
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+    # Check if user with same username or email exists
+        cursor.execute("""
+        SELECT user_id FROM users WHERE username = ? OR email = ?
+        """, (username, email))
+        existing_user = cursor.fetchone()
+        if existing_user:
+            return jsonify({"error": "A user with this username or email already exists."}), 409
+
+    # Hash the password
+        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+        hashed_pw_str = hashed_pw.decode('utf-8')
+
+    # Insert new user
+        cursor.execute("""
+            INSERT INTO users (username, email, contact_no, userpassword, role_id, business_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (username, email, contact_no, hashed_pw_str, role_id, business_id))
+
+        conn.commit()
+        return jsonify({"message": "User added successfully."}), 201
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@auth_bp.route('/delete-user/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    data = request.json or {}
+
+    current_user_role = data.get('current_user_role')
+    current_user_id = data.get('current_user_id')
+    # Should come from token/session in production
+    current_business_id = data.get('business_id')
+
+#check that it's the admin that can delete only
+    if current_user_role != 1:
+        return jsonify({"error": "Unauthorized. Only admins can delete users."}), 403
+
+#prevention for admin to NOT delete his own account!!
+    if current_user_id == user_id:
+        return jsonify({"error": "You cannot delete your own admin account."}), 400
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # 1. Check if user exists and belongs to same business
+        cursor.execute("""
+            SELECT role_id, business_id FROM users WHERE user_id = ?
+        """, (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({"error": "User not found."}), 404
+
+        target_role_id, target_business_id = user
+
+        # 2. Prevent deleting admins of other business
+        if target_role_id == 1:
+            return jsonify({"error": "Cannot delete other admins."}), 403
+
+        # 3. Check if target user is in the same business, if not give error
+        if target_business_id != current_business_id:
+            return jsonify({"error": "You can only delete users from your own business."}), 403
+
+        # 4. Safe to delete
+        cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+        conn.commit()
+        return jsonify({"message": f"User ID {user_id} deleted successfully."}), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@auth_bp.route('/update-user/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.json or {}
+    # replace later with token or session
+    current_user_role = data.get('current_user_role')
+    current_business_id = data.get('business_id')
+
+    if current_user_role != 1:
+        return jsonify({"error": "Unauthorized. Only admins can update users."}), 403
+
+    email = data.get('email')
+    contact_no = data.get('contact_no')
+    role_id = data.get('role_id')
+    password = data.get('password')
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+    # Check if the user exists and belongs to same business
+        cursor.execute(
+            "SELECT business_id, role_id FROM users WHERE user_id = ?", (user_id,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return jsonify({"error": "User not found."}), 404
+
+        target_user_business_id, target_user_role_id = user_row
+
+# cannot update admin
+        if target_user_role_id == 1:
+            return jsonify({"error": "Admins cannot be updated via this endpoint."}), 403
+# user to be updated is not present in the business, can't delete from other business
+        if target_user_business_id != current_business_id:
+            return jsonify({"error": "Unauthorized. Cannot modify users from other businesses."}), 403
+
+        fields = []
+        values = []
+
+        if email:
+            fields.append("email = ?")
+            values.append(email)
+        if contact_no:
+            fields.append("contact_no = ?")
+            values.append(contact_no)
+        if role_id:
+            fields.append("role_id = ?")
+            values.append(role_id)
+        if password:
+            hashed_pw = bcrypt.hashpw(
+                password.encode('utf-8'), bcrypt.gensalt())
+            fields.append("userpassword = ?")
+            values.append(hashed_pw.decode('utf-8'))
+
+        if not fields:
+            return jsonify({"error": "No fields to update."}), 400
+
+        values.append(user_id)
+        update_query = f"UPDATE users SET {', '.join(fields)} WHERE user_id = ?"
+        cursor.execute(update_query, values)
+        conn.commit()
+
+        return jsonify({"message": f"User ID {user_id} updated successfully."}), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+
+@auth_bp.route('/login', methods=['POST'])
+def login():
+    data = request.json
+
+    email = data.get('email')
+    password = data.get('password')
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # Get user with the given email
+        cursor.execute(
+            "SELECT user_id, username, userpassword, role_id FROM users WHERE email = ?", (email,))
+        row = cursor.fetchone()
+
+        if not row:
+            return jsonify({"error": "Invalid email or password"}), 401
+
+        user_id, username, hashed_password, role_id = row
+
+        if bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8')):
+            return jsonify({
+                "message": "Login successful",
+                "user": {
+                    "user_id": user_id,
+                    "username": username,
+                    "role_id": role_id
+                }
+            }), 200
+        else:
+            return jsonify({"error": "Invalid email or password"}), 401
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
