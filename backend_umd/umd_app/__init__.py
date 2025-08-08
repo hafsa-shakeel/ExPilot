@@ -33,10 +33,8 @@ def create_app():
     app.config['SESSION_USE_SIGNER'] = False
     app.config['SESSION_COOKIE_HTTPONLY'] = True
 
-  # Session(app)
-    # jwt = JWTManager(app)
 
-    # CORS Setup -allows frontend to send JWT, cookies, headers
+    # CORS Setup -allows frontend to send cookies, headers
     CORS(app, supports_credentials=True, origins=['http://localhost:3000'])
 
     @app.after_request
@@ -58,3 +56,4 @@ def create_app():
     app.register_blueprint(alert_bp, url_prefix='/api/alert')
 
     return app
+
