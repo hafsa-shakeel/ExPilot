@@ -17,7 +17,7 @@ def get_connection():
     except Exception as e:
         print("Database connection failed:", e)
         return None
-
-# This should be OUTSIDE the function, at the bottom:
+        
 if __name__ == "__main__":
     get_connection()
+
