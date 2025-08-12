@@ -1,11 +1,10 @@
 # ExPilot
 
 Welcome to the ExPilot repository, built using Flask (Python) for the backend and React for the frontend!
-This project is designed to help businesses with multiple locations manage branches, budgets, utility bills, alerts, and financial reporting efficiently.
 
 ## Table of Contents
 
-- Problem Solved / Motivation
+- Motivation
 - Introduction
 - Features
 - Installation Instructions
