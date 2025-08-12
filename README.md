@@ -1,6 +1,7 @@
 # ExPilot
 
 Welcome to the ExPilot repository, built using Flask (Python) for the backend and React for the frontend!
+
 <img width="950" height="450" alt="image" src="https://github.com/user-attachments/assets/00483a11-78db-46a6-ab0e-25404a82567d" />
 
 
@@ -117,6 +118,20 @@ Microsoft SQL Server
 React
 Axios
 Bootstrap (UI styling)
+
+## Screenshots
+
+<img width="950" height="450" alt="image" src="https://github.com/user-attachments/assets/cc1d7dec-cc2a-4d04-ba8d-8ac081199f0d" />
+
+<img width="793" height="435" alt="image" src="https://github.com/user-attachments/assets/af88acb3-bcc6-4a5c-8f14-5581a4eeb586" />
+
+<img width="950" height="450" alt="image" src="https://github.com/user-attachments/assets/217e5310-aa9e-4feb-9128-01d66830a612" />
+
+<img width="739" height="404" alt="image" src="https://github.com/user-attachments/assets/ec550b96-f552-413e-bedc-fc7b5c8b251d" />
+
+
+
+
 
 
 
