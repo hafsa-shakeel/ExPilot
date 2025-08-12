@@ -1,7 +1,7 @@
 # ExPilot
 
 Welcome to the ExPilot repository, built using Flask (Python) for the backend and React for the frontend!
-<img width="1000" height="400" alt="image" src="https://github.com/user-attachments/assets/00483a11-78db-46a6-ab0e-25404a82567d" />
+<img width="1000" height="450" alt="image" src="https://github.com/user-attachments/assets/00483a11-78db-46a6-ab0e-25404a82567d" />
 
 
 ## Table of Contents
