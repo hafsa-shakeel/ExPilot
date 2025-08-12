@@ -1,4 +1,4 @@
-<img width="872" height="540" alt="image" src="https://github.com/user-attachments/assets/a41bb56e-60df-4ec8-8014-4c3ccb6c2c4c" /># ExPilot
+# ExPilot
 
 Welcome to the ExPilot repository, built using Flask (Python) for the backend and React for the frontend!
 This project is designed to help businesses with multiple locations manage branches, budgets, utility bills, alerts, and financial reporting efficiently.
@@ -88,20 +88,36 @@ npm start
 Frontend will run on http://localhost:3000
 
 ## Usage
-### Admin Actions:
+#### Admin Actions:
 - Register & manage branches.
 - Allocate & update budgets.
 - View all branch expenses & performance.
 - Compare branches.
 - Manage business profile.
 
-### Branch Manager Actions:
+#### Branch Manager Actions:
 - View assigned branch dashboard.
 - Upload utility bills.
 - Track branch budget & expenses.
 - View profit/loss summaries.
 
 ## Database Schema
+<img width="872" height="500" alt="image" src="https://github.com/user-attachments/assets/a41bb56e-60df-4ec8-8014-4c3ccb6c2c4c" />
+
+## Technologies Used
+#### Backend:
+Python 3.10+
+Flask
+Flask-Session
+PyODBC (SQL Server connection)
+Microsoft SQL Server
+
+#### Frontend:
+React
+Axios
+Bootstrap (UI styling)
+
+
 
 
 
