@@ -96,6 +96,7 @@ Frontend will run on http://localhost:3000
 - View all branch expenses & performance.
 - Compare branches.
 - Manage business profile.
+- View profit/loss summaries.
 
 #### Branch Manager Actions:
 - View assigned branch dashboard.
